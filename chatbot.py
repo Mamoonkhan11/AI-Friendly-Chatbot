@@ -1,4 +1,4 @@
-# Chatbot Entry Point
+# Main chatbot application
 
 import os
 from dotenv import load_dotenv
@@ -13,40 +13,50 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # Path to chat history file
 CHAT_HISTORY_FILE = "data/chat_history.txt"
 
+
 def load_chat_history(file_path=CHAT_HISTORY_FILE):
-    """Load previous chat history from file"""
+    """Load previous chat history from file safely."""
     if not os.path.exists(file_path):
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         return []
     
     chat_memory = []
     with open(file_path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-        # Parse each pair of lines (You: ... / Bot: ...)
-        for i in range(0, len(lines), 3):  # 2 lines + empty line
-            user_line = lines[i].strip().replace("You: ", "")
-            bot_line = lines[i+1].strip().replace("Bot: ", "")
-            chat_memory.append({"user": user_line, "bot": bot_line})
+        lines = [line.strip() for line in f if line.strip()]  # skip blank lines
+
+    # Parse safely to avoid IndexError
+    for i in range(0, len(lines) - 1, 2):  # every two lines: You + Bot
+        if not lines[i].startswith("You:") or not lines[i+1].startswith("Bot:"):
+            continue
+        user_line = lines[i].replace("You: ", "").strip()
+        bot_line = lines[i+1].replace("Bot: ", "").strip()
+        chat_memory.append({"user": user_line, "bot": bot_line})
+
     return chat_memory
+
 
 def main():
     print("Welcome to Friendly AI Chatbot!")
     user_name = input("What's your name? ").strip() or "Friend"
-    print(f"\nHello {user_name}! I'm Neura, your friendly AI assistant. What do you want to know? 🌸\nType 'quit' to exit.\n")
+    print(f"\nHello {user_name}! I'm Neura, your friendly AI assistant. 🌸")
+    print("Type 'quit' to exit.\n")
 
     # Load previous chat history
     chat_memory = load_chat_history()
 
     # Print previous chat if exists
     if chat_memory:
-        print(" Previous conversation:")
+        print("Previous conversation:\n")
         for chat in chat_memory:
             print(f"{user_name}: {chat['user']}")
-            print(f"Lyra: {chat['bot']}\n")
+            print(f"Neura: {chat['bot']}\n")
 
+    # Chat loop
     while True:
         user_input = input(f"{user_name}: ").strip()
         if user_input.lower() in ["quit", "exit"]:
-            print("Goodbye! Have a wonderful day!")
+            print("Goodbye! Have a wonderful day! 👋")
             break
 
         # Check rule-based responses first
@@ -66,6 +76,7 @@ def main():
 
         # Persist conversation to file
         log_chat(user_input, response, file_path=CHAT_HISTORY_FILE)
+
 
 if __name__ == "__main__":
     main()
